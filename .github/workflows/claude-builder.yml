@@ -1,0 +1,99 @@
+name: Claude Builder
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task for Claude to complete'
+        required: true
+        default: 'Build the MVP demo'
+    
+jobs:
+  build-with-claude:
+    # Only run if the label is 'claude-work' OR it's a manual trigger
+    if: |
+      (github.event_name == 'issues' && github.event.label.name == 'claude-work') ||
+      github.event_name == 'workflow_dispatch'
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_pgsql, redis
+          coverage: none
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist
+          npm ci
+          
+      - name: Claude Builder Task
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: "claude-3-5-sonnet-20241022"
+          max_turns: 30
+          prompt: |
+            ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.task || format('Complete the task described in issue #{0}: {1}', github.event.issue.number, github.event.issue.title) }}
+            
+            Context:
+            - This is a Laravel 11 application for Compel English
+            - We're building an MVP demo with pronunciation training for Japanese speakers
+            - Focus on the "Midnight Margin Call" story episode
+            - Use Azure Speech Services for pronunciation (credentials in .env)
+            - Keep the visual novel interface simple but engaging
+            
+            Requirements:
+            - Write clean, testable code
+            - Follow Laravel best practices
+            - Use TypeScript for React components
+            - Create database migrations as needed
+            - Write tests for critical functionality
+            - Commit changes with clear messages
+            - Create a PR when complete with description of changes
+            
+            If you encounter any issues or need clarification, document them in comments.
+          allowed_tools: |
+            Bash(composer *),
+            Bash(php artisan *),
+            Bash(npm *),
+            Bash(git *),
+            View,
+            Edit,
+            Replace,
+            GlobTool,
+            GrepTool,
+            BatchTool,
+            mcp__github__create_pull_request,
+            mcp__github__get_file_contents,
+            mcp__github__list_issues,
+            mcp__github__add_issue_comment
+          disallowed_tools: |
+            Bash(rm -rf),
+            Bash(sudo),
+            TaskKill
+            
+      - name: Run tests
+        if: success()
+        run: |
+          php artisan test
+        continue-on-error: true
+        
+      - name: Build assets
+        if: success()
+        run: |
+          npm run build
+        continue-on-error: true
