@@ -1,61 +1,31 @@
-# Technology Architecture Decisions
+<?php
 
-## Core Stack
-**Laravel + Google Cloud + Azure Speech API**
+use App\Http\Controllers\DemoController;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
-### Frontend
-- Laravel (monolith approach, no microservices)
-- Google Cloud hosting (using $300 credits)
-- CloudFlare CDN for assets
+Route::get('/', function () {
+    return Inertia::render('landing');
+})->name('landing');
 
-### Database
-**Decision: Google Cloud SQL (PostgreSQL)**
-- NOT Firebase (NoSQL doesn't fit our needs)
-- Better for relational data (users, scores, progress)
-- Eloquent ORM benefits maintained
-- Easy aggregation for analytics
+Route::get('/demo', function () {
+    return Inertia::render('demo');
+})->name('demo');
 
-### Why NOT Firebase
-- Hard to query complex relationships
-- Difficult to aggregate pronunciation scores
-- Cost unpredictability with heavy usage
-- Lose Laravel's native database features
+Route::get('/welcome', function () {
+    return Inertia::render('welcome');
+})->name('welcome');
 
-### Pronunciation Engine
-**Azure Speech Services**
-- Only viable option currently
-- Built-in pronunciation assessment
-- Phoneme-level accuracy scores
-- Supports Japanese speakers
+Route::get('/dashboard', function () {
+    return Inertia::render('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
-**Future Options to Test:**
-- SpeechSuper (when budget allows)
-- SpeechAce (education-focused)
-- DIY not viable (too complex/expensive)
+// Demo API routes
+Route::prefix('api/demo')->name('demo.')->group(function () {
+    Route::post('/register', [DemoController::class, 'register'])->name('register');
+    Route::get('/phrase', [DemoController::class, 'phrase'])->name('phrase');
+    Route::post('/score', [DemoController::class, 'score'])->name('score');
+});
 
-## Visual Novel Framework
-**For Demo: Web-based approach**
-- Consider Monogatari.js (simple, web-native)
-- Custom React framework for production
-- Focus on desktop experience (cinematic quality)
-
-## Architecture Principles
-1. **Start simple**: Monolith over microservices
-2. **Use proven tools**: Laravel + PostgreSQL
-3. **Cache aggressively**: Redis for performance
-4. **Buy vs Build**: Use Azure for pronunciation
-5. **Desktop-first**: Preserve story experience
-
-## Scaling Considerations
-When SBIR funding arrives:
-- Migrate to Go/Rust for performance
-- Add more language support
-- Build custom pronunciation engine
-- Expand to mobile apps
-
-## Current Limitations Accepted
-- Reliance on Azure API (no alternative)
-- Desktop-only for stories (quality > convenience)
-- Token-based usage (managing Azure costs)
-
-Last Updated: 2025-05-24
+require __DIR__.'/auth.php';
+require __DIR__.'/settings.php';
