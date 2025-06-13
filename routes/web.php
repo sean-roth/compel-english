@@ -1,61 +1,36 @@
-# Technology Architecture Decisions
+<?php
 
-## Core Stack
-**Laravel + Google Cloud + Azure Speech API**
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\DemoController;
+use App\Http\Controllers\LandingController;
+use Illuminate\Support\Facades\Route;
 
-### Frontend
-- Laravel (monolith approach, no microservices)
-- Google Cloud hosting (using $300 credits)
-- CloudFlare CDN for assets
+// Demo landing page - main route
+Route::get('/', [LandingController::class, 'index'])->name('landing');
 
-### Database
-**Decision: Google Cloud SQL (PostgreSQL)**
-- NOT Firebase (NoSQL doesn't fit our needs)
-- Better for relational data (users, scores, progress)
-- Eloquent ORM benefits maintained
-- Easy aggregation for analytics
+// Demo API routes
+Route::prefix('api/demo')->group(function () {
+    Route::post('/pronunciation', [DemoController::class, 'checkPronunciation'])->name('demo.pronunciation');
+    Route::post('/email', [DemoController::class, 'captureEmail'])->name('demo.email');
+});
 
-### Why NOT Firebase
-- Hard to query complex relationships
-- Difficult to aggregate pronunciation scores
-- Cost unpredictability with heavy usage
-- Lose Laravel's native database features
+// Checkout API routes
+Route::prefix('api/checkout')->group(function () {
+    Route::post('/session', [CheckoutController::class, 'createSession'])->name('checkout.session');
+});
 
-### Pronunciation Engine
-**Azure Speech Services**
-- Only viable option currently
-- Built-in pronunciation assessment
-- Phoneme-level accuracy scores
-- Supports Japanese speakers
+// Mock checkout page for demo
+Route::get('/checkout/demo', function () {
+    return inertia('Checkout/Demo', [
+        'email' => request('email'),
+        'plan' => request('plan', 'starter-monthly')
+    ]);
+})->name('checkout.demo');
 
-**Future Options to Test:**
-- SpeechSuper (when budget allows)
-- SpeechAce (education-focused)
-- DIY not viable (too complex/expensive)
+// Existing auth and dashboard routes (preserved)
+require __DIR__.'/auth.php';
+require __DIR__.'/settings.php';
 
-## Visual Novel Framework
-**For Demo: Web-based approach**
-- Consider Monogatari.js (simple, web-native)
-- Custom React framework for production
-- Focus on desktop experience (cinematic quality)
-
-## Architecture Principles
-1. **Start simple**: Monolith over microservices
-2. **Use proven tools**: Laravel + PostgreSQL
-3. **Cache aggressively**: Redis for performance
-4. **Buy vs Build**: Use Azure for pronunciation
-5. **Desktop-first**: Preserve story experience
-
-## Scaling Considerations
-When SBIR funding arrives:
-- Migrate to Go/Rust for performance
-- Add more language support
-- Build custom pronunciation engine
-- Expand to mobile apps
-
-## Current Limitations Accepted
-- Reliance on Azure API (no alternative)
-- Desktop-only for stories (quality > convenience)
-- Token-based usage (managing Azure costs)
-
-Last Updated: 2025-05-24
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::inertia('/dashboard', 'dashboard')->name('dashboard');
+});
