@@ -1,61 +1,58 @@
-# Technology Architecture Decisions
+<?php
 
-## Core Stack
-**Laravel + Google Cloud + Azure Speech API**
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\DemoController;
+use App\Http\Controllers\LandingController;
+use App\Http\Controllers\PronunciationController;
+use App\Http\Controllers\Settings\PasswordController;
+use App\Http\Controllers\Settings\ProfileController;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
-### Frontend
-- Laravel (monolith approach, no microservices)
-- Google Cloud hosting (using $300 credits)
-- CloudFlare CDN for assets
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
 
-### Database
-**Decision: Google Cloud SQL (PostgreSQL)**
-- NOT Firebase (NoSQL doesn't fit our needs)
-- Better for relational data (users, scores, progress)
-- Eloquent ORM benefits maintained
-- Easy aggregation for analytics
+// Landing page and demo routes (public)
+Route::get('/', [LandingController::class, 'index'])->name('home');
 
-### Why NOT Firebase
-- Hard to query complex relationships
-- Difficult to aggregate pronunciation scores
-- Cost unpredictability with heavy usage
-- Lose Laravel's native database features
+// Demo API routes
+Route::prefix('api/demo')->group(function () {
+    Route::post('/access', [DemoController::class, 'requestAccess']);
+    Route::get('/access/check', [DemoController::class, 'checkAccess']);
+    Route::post('/access/pre-order', [DemoController::class, 'markPreOrdered']);
+});
 
-### Pronunciation Engine
-**Azure Speech Services**
-- Only viable option currently
-- Built-in pronunciation assessment
-- Phoneme-level accuracy scores
-- Supports Japanese speakers
+// Pronunciation API routes (requires demo token)
+Route::prefix('api/pronunciation')->group(function () {
+    Route::post('/analyze', [PronunciationController::class, 'analyze']);
+});
 
-**Future Options to Test:**
-- SpeechSuper (when budget allows)
-- SpeechAce (education-focused)
-- DIY not viable (too complex/expensive)
+// Checkout routes
+Route::prefix('api/checkout')->group(function () {
+    Route::post('/session', [CheckoutController::class, 'createSession']);
+    Route::post('/webhook', [CheckoutController::class, 'handleWebhook']);
+});
 
-## Visual Novel Framework
-**For Demo: Web-based approach**
-- Consider Monogatari.js (simple, web-native)
-- Custom React framework for production
-- Focus on desktop experience (cinematic quality)
+// Pre-order confirmation page
+Route::get('/pre-order/confirm', function () {
+    return Inertia::render('PreOrder/Confirm');
+})->name('pre-order.confirm');
 
-## Architecture Principles
-1. **Start simple**: Monolith over microservices
-2. **Use proven tools**: Laravel + PostgreSQL
-3. **Cache aggressively**: Redis for performance
-4. **Buy vs Build**: Use Azure for pronunciation
-5. **Desktop-first**: Preserve story experience
+// Authenticated routes
+Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+});
 
-## Scaling Considerations
-When SBIR funding arrives:
-- Migrate to Go/Rust for performance
-- Add more language support
-- Build custom pronunciation engine
-- Expand to mobile apps
-
-## Current Limitations Accepted
-- Reliance on Azure API (no alternative)
-- Desktop-only for stories (quality > convenience)
-- Token-based usage (managing Azure costs)
-
-Last Updated: 2025-05-24
+require __DIR__ . '/auth.php';
+require __DIR__ . '/settings.php';
